@@ -71,8 +71,8 @@ def watermark_pdf(
             height = float(page.mediabox.height)
             wm_buf = wm_func(width, height, text)
             wm_page = PdfReader(wm_buf).pages[0]
-            page.merge_page(wm_page)
             writer.add_page(page)
+            writer.pages[-1].merge_page(wm_page)
     except Exception as exc:
         print(f"WARNING: failed to watermark {input_path}: {exc}", file=sys.stderr)
         if output_path.exists():

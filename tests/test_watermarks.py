@@ -89,7 +89,6 @@ def test_watermark_pdf_bad_input_skips_gracefully(capsys):
 def test_watermark_pdf_partial_output_deleted_on_merge_failure(capsys, tmp_path):
     """If merging fails mid-way, any partial output file must be deleted."""
     from add_watermarks import watermark_pdf
-    import unittest.mock as mock
 
     src = tmp_path / "sample.pdf"
     dst = tmp_path / "out.pdf"
