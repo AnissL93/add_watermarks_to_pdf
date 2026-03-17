@@ -96,8 +96,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--text", "-t",
-        default="FOR RENTING ONLY",
-        help='Watermark text (default: "FOR RENTING ONLY")',
+        default="CONFIDENTIAL",
+        help='Watermark text (default: "CONFIDENTIAL")',
     )
     args = parser.parse_args()
 
