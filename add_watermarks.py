@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """Add diagonal or tiled watermarks to PDF files."""
 
-import sys
-import argparse
 from io import BytesIO
-from pathlib import Path
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import Color
-from pypdf import PdfReader, PdfWriter
 
 
 def make_diagonal_watermark(width_pt: float, height_pt: float, text: str) -> BytesIO:
