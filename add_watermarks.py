@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Add diagonal or tiled watermarks to PDF files."""
 
+import argparse
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -81,3 +82,51 @@ def watermark_pdf(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "wb") as f:
         writer.write(f)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Add watermarks to PDF files."
+    )
+    parser.add_argument(
+        "pdfs",
+        nargs="*",
+        metavar="PDF",
+        help="PDF file(s) to watermark. Defaults to all *.pdf in the script's directory.",
+    )
+    parser.add_argument(
+        "--text", "-t",
+        default="FOR RENTING ONLY",
+        help='Watermark text (default: "FOR RENTING ONLY")',
+    )
+    args = parser.parse_args()
+
+    if args.pdfs:
+        input_paths = [Path(p) for p in args.pdfs]
+    else:
+        script_dir = Path(__file__).parent
+        watermarked_dir = script_dir / "watermarked"
+        input_paths = [
+            p for p in script_dir.glob("*.pdf")
+            if not p.resolve().is_relative_to(watermarked_dir.resolve())
+        ]
+
+    if not input_paths:
+        print("No PDF files found.", file=sys.stderr)
+        sys.exit(0)
+
+    for src in input_paths:
+        src = Path(src).resolve()
+        out_base = src.parent / "watermarked"
+        diagonal_out = out_base / "diagonal" / f"{src.stem}_diagonal.pdf"
+        tiled_out = out_base / "tiled" / f"{src.stem}_tiled.pdf"
+
+        print(f"Processing: {src.name}")
+        watermark_pdf(src, make_diagonal_watermark, diagonal_out, args.text)
+        watermark_pdf(src, make_tiled_watermark, tiled_out, args.text)
+
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()

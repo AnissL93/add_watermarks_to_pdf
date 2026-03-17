@@ -1,6 +1,9 @@
 import pytest
 import tempfile
 import os
+import sys
+import subprocess
+import shutil
 from io import BytesIO
 from pathlib import Path
 from pypdf import PdfReader, PdfWriter
@@ -102,3 +105,65 @@ def test_watermark_pdf_partial_output_deleted_on_merge_failure(capsys, tmp_path)
     captured = capsys.readouterr()
     assert "WARNING" in captured.err or "warning" in captured.err.lower()
     assert not dst.exists(), "partial output must be deleted on failure"
+
+
+def test_main_cli_no_args_scans_script_directory():
+    """Integration: with no args, script processes all *.pdf in its own directory,
+    excluding files already in watermarked/ subdirectories."""
+    script = Path(__file__).parent.parent / "add_watermarks.py"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        _make_sample_pdf(tmpdir / "a.pdf")
+        _make_sample_pdf(tmpdir / "b.pdf")
+        # Pre-create a watermarked output to confirm it is NOT re-processed
+        wm_dir = tmpdir / "watermarked" / "diagonal"
+        wm_dir.mkdir(parents=True)
+        _make_sample_pdf(wm_dir / "a_diagonal.pdf")
+
+        # Copy script temporarily into tmpdir so __file__ resolves there
+        script_copy = tmpdir / "add_watermarks.py"
+        shutil.copy(script, script_copy)
+
+        result = subprocess.run(
+            [sys.executable, str(script_copy)],
+            capture_output=True, text=True, cwd=str(tmpdir)
+        )
+        assert result.returncode == 0, result.stderr
+        assert (tmpdir / "watermarked" / "diagonal" / "a_diagonal.pdf").exists()
+        assert (tmpdir / "watermarked" / "diagonal" / "b_diagonal.pdf").exists()
+        assert (tmpdir / "watermarked" / "tiled" / "a_tiled.pdf").exists()
+        assert (tmpdir / "watermarked" / "tiled" / "b_tiled.pdf").exists()
+        # The pre-existing watermarked PDF should not produce a double-watermarked copy
+        assert not (tmpdir / "watermarked" / "diagonal" / "a_diagonal_diagonal.pdf").exists()
+
+
+def test_main_cli_specific_files():
+    """Integration: run the script as a subprocess with explicit file args."""
+    script = Path(__file__).parent.parent / "add_watermarks.py"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        src = tmpdir / "sample.pdf"
+        _make_sample_pdf(src)
+        result = subprocess.run(
+            [sys.executable, str(script), str(src), "--text", "TESTING"],
+            capture_output=True, text=True
+        )
+        assert result.returncode == 0, result.stderr
+        assert (tmpdir / "watermarked" / "diagonal" / "sample_diagonal.pdf").exists()
+        assert (tmpdir / "watermarked" / "tiled" / "sample_tiled.pdf").exists()
+
+
+def test_main_cli_default_text():
+    """Integration: default text is used when --text not supplied."""
+    script = Path(__file__).parent.parent / "add_watermarks.py"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        src = tmpdir / "doc.pdf"
+        _make_sample_pdf(src)
+        result = subprocess.run(
+            [sys.executable, str(script), str(src)],
+            capture_output=True, text=True
+        )
+        assert result.returncode == 0, result.stderr
+        assert (tmpdir / "watermarked" / "diagonal" / "doc_diagonal.pdf").exists()
+        assert (tmpdir / "watermarked" / "tiled" / "doc_tiled.pdf").exists()
